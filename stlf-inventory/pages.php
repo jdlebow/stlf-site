@@ -51,7 +51,7 @@ add_action('template_redirect', function () {
     if (is_admin()) return;
     $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     if ($path === 'llms.txt' || $path === 'robots.txt') {
-        header('Content-Type: text/plain; charset=utf-8');
+        status_header(200); header('Content-Type: text/plain; charset=utf-8');
         if ($path === 'robots.txt') { echo "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\nDisallow: /stlf-lead/\n\nSitemap: " . home_url('/sitemap-inventory.xml') . "\n"; exit; }
         $inv = stlf_inv(); $n = count(array_filter($inv, fn($v) => !$v['used']));
         echo "# St. Louis Ford\n\n> Online home for new and used Ford inventory, 7466 S. Lindbergh Blvd., St. Louis, MO 63125. Phone " . STLF_PHONE . ".\n\n## Pages\n- " . home_url('/new-ford-vehicles/') . ": " . $n . " new Ford vehicles\n- " . home_url('/used-vehicles/') . ": used cars, trucks and SUVs\n- " . home_url('/new-ford-models/') . ": new Fords by model\n- " . home_url('/specials/') . ": discounts on new Fords\n- " . home_url('/get-approved/') . ": credit application\n- " . home_url('/value-your-trade/') . ": trade in value\n- " . home_url('/contact-us/') . ": contact\n\nPrices on vehicle pages come from a file refreshed daily. If the file is more than 30 hours old, prices are hidden and the page says to call.\n"; exit;
@@ -68,10 +68,10 @@ add_action('template_redirect', function () {
         wp_mail($to, 'Web lead: ' . $src . ' ' . $f('first') . ' ' . $f('last'), $adf, ['Content-Type: text/plain; charset=UTF-8']);
         if ($ajax) { header('Content-Type: application/json'); echo '{"ok":true}'; exit; }
         header('Content-Type: text/html; charset=utf-8');
-        echo stlf_head('Thank you | St. Louis Ford', 'We received your request.', '<meta name="robots" content="noindex">') . stlf_hdr() . '<div class="wrap"><h1 style="font-size:46px">Thank you</h1><p class="mut" style="font-size:18px">We got your request and will be in touch. Need us sooner? Call ' . STLF_PHONE . '.</p><a class="btn y" style="max-width:260px" href="/new-ford-vehicles/">Keep shopping</a></div>' . stlf_ft(); exit;
+        status_header(200); echo stlf_head('Thank you | St. Louis Ford', 'We received your request.', '<meta name="robots" content="noindex">') . stlf_hdr() . '<div class="wrap"><h1 style="font-size:46px">Thank you</h1><p class="mut" style="font-size:18px">We got your request and will be in touch. Need us sooner? Call ' . STLF_PHONE . '.</p><a class="btn y" style="max-width:260px" href="/new-ford-vehicles/">Keep shopping</a></div>' . stlf_ft(); exit;
     }
     if (in_array($path, stlf_extra_paths(), true)) {
-        $h = stlf_extra_page($path); if ($h) { header('Content-Type: text/html; charset=utf-8'); echo $h; exit; }
+        $h = stlf_extra_page($path); if ($h) { status_header(200); header('Content-Type: text/html; charset=utf-8'); echo $h; exit; }
     }
 }, 5);
 

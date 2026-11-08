@@ -2,7 +2,7 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.4
+ * Version: 0.5.5
  */
 if (!defined('ABSPATH')) exit;
 
@@ -204,7 +204,7 @@ add_action('template_redirect', function () {
     $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     if ($path === '' && !get_option('stlf_home', 1)) return;
     if ($path === 'sitemap-inventory.xml') {
-        $inv = stlf_inv(); header('Content-Type: application/xml; charset=utf-8');
+        status_header(200); $inv = stlf_inv(); header('Content-Type: application/xml; charset=utf-8');
         echo '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' . esc_url(home_url('/')) . '</loc></url><url><loc>' . esc_url(home_url('/new-ford-vehicles/')) . '</loc></url><url><loc>' . esc_url(home_url('/used-vehicles/')) . '</loc></url>'; foreach (array_merge(['new-ford-models', 'specials'], stlf_model_paths($inv), stlf_extra_paths()) as $xp) if ($xp !== 'privacy-policy') echo '<url><loc>' . esc_url(home_url('/' . $xp . '/')) . '</loc></url>';
         foreach ($inv as $v) echo '<url><loc>' . esc_url(home_url('/' . stlf_slug($v) . '/')) . '</loc></url>';
         echo '</urlset>'; exit;
@@ -222,5 +222,5 @@ add_action('template_redirect', function () {
         if ($html === null) { status_header(404); $html = stlf_head('This vehicle is no longer available | St. Louis Ford', 'This vehicle has been sold or removed.') . stlf_hdr() . '<div class="wrap"><h1>This vehicle is no longer available</h1><p class="mut">It may have sold. <a href="/new-ford-vehicles/" style="color:#c8ff2e">See new Ford vehicles</a> or <a href="/used-vehicles/" style="color:#c8ff2e">used vehicles</a>, or call ' . STLF_PHONE . '.</p></div>' . stlf_ft(); }
     }
     if ($html === null) return;
-    header('Content-Type: text/html; charset=utf-8'); echo $html; exit;
+    status_header(200); header('Content-Type: text/html; charset=utf-8'); echo $html; exit;
 });

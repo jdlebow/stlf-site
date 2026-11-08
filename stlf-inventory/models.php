@@ -155,5 +155,5 @@ add_action('template_redirect', function () {
     if ($path === 'new-ford-models') $h = stlf_models_hub($inv);
     elseif ($path === 'specials') $h = stlf_specials($inv);
     elseif (isset($mm[1]) && $mm[1] !== 'vehicles') $h = stlf_model_page($mm[1], $inv);
-    if ($h) { header('Content-Type: text/html; charset=utf-8'); echo $h; exit; }
+    if ($h) { status_header(200); header('Content-Type: text/html; charset=utf-8'); echo $h; exit; }
 }, 6);
