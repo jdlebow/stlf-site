@@ -19,7 +19,7 @@ function stlf_page($title, $desc, $path, $h1, $body, $ld = '') {
 }
 function stlf_embed_or($opt, $fallback) {
     $e = trim((string)get_option($opt, ''));
-    return $e !== '' ? '<div class="box">' . $e . '</div>' : $fallback;
+    return $e !== '' ? '<div class="box" style="background:#f4f6f8;color:#111;border-radius:14px;padding:14px">' . $e . '</div>' : $fallback;
 }
 function stlf_extra_page($path) {
     $ph = STLF_PHONE;

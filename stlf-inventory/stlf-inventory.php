@@ -2,7 +2,7 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.6
+ * Version: 0.5.7
  */
 if (!defined('ABSPATH')) exit;
 
