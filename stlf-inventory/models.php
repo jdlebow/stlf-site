@@ -78,7 +78,7 @@ function stlf_model_page($key, $inv) {
     $engTxt = $eng ? 'The ' . $m['label'] . ' vehicles on our lot right now list these engines: ' . implode('; ', $eng) . '. Engine is shown on each vehicle page.' : 'The engine is shown on each vehicle page.';
     $drvTxt = $drv ? 'The ' . $m['label'] . ' vehicles on our lot show these drive types: ' . implode('; ', $drv) . '.' : 'Drive type is shown on each vehicle page.';
     $faq = []; foreach ($m['faq'] as $q) $faq[] = [$q[0], str_replace(['%ENGINES%', '%DRIVE%'], [$engTxt, $drvTxt], $q[1])];
-    $faq[] = ['How do I buy a ' . $m['label'] . ' from St. Louis Ford?', 'Pick a vehicle above and send us a message, call ' . STLF_PHONE . ', or start a credit application. The vehicles are at Dave Sinclair Ford, 7466 S. Lindbergh Blvd., St. Louis, MO 63125.'];
+    $faq[] = ['How do I buy a ' . $m['label'] . ' from St. Louis Ford?', 'Pick a vehicle above and send us a message, call ' . STLF_PHONE . ', or start a credit application. The vehicles are at 7466 S. Lindbergh Blvd., St. Louis, MO 63125.'];
     $faq[] = ['Can I trade in my current vehicle?', 'Yes. Use the trade page for a value, then we apply it toward the ' . $m['label'] . ' you choose.'];
     $cards = ''; foreach ($items as $v) $cards .= stlf_card($v);
     $h2s = ''; foreach ($faq as $q) $h2s .= '<h3 style="font-family:\'DM Sans\',sans-serif;text-transform:none;font-size:18px;margin:18px 0 4px">' . stlf_e($q[0]) . '</h3><p style="margin:0;color:#b4bac6;line-height:1.6">' . stlf_e($q[1]) . '</p>';
@@ -94,7 +94,7 @@ function stlf_model_page($key, $inv) {
     ];
     $ldh = ''; foreach ($ld as $o) $ldh .= '<script type="application/ld+json">' . wp_json_encode($o, JSON_UNESCAPED_SLASHES) . '</script>';
     $body = '<div class="mut">Home / <a href="/new-ford-models/" style="color:#c8ff2e">New Ford models</a> / ' . stlf_e($m['full']) . '</div><h1 style="font-size:46px;margin:8px 0 10px">' . stlf_e($h1) . '</h1>'
-        . '<p style="max-width:820px;font-size:18px;line-height:1.6;color:#d6dae1">' . stlf_e('St. Louis Ford has ' . $n . ' new ' . $m['full'] . ' vehicles on the lot at Dave Sinclair Ford in south St. Louis County.' . $price) . ' ' . stlf_e($m['intro']) . '</p>'
+        . '<p style="max-width:820px;font-size:18px;line-height:1.6;color:#d6dae1">' . stlf_e('St. Louis Ford has ' . $n . ' new ' . $m['full'] . ' vehicles on the lot in south St. Louis County.' . $price) . ' ' . stlf_e($m['intro']) . '</p>'
         . '<div class="grid" style="margin-top:20px">' . $cards . '</div>'
         . '<h2 style="margin-top:36px">' . stlf_e($m['full']) . ' trims in stock</h2><table>' . $rows . '</table>'
         . '<h2 style="margin-top:36px">Who the ' . stlf_e($m['label']) . ' fits</h2><p style="max-width:820px;line-height:1.6;color:#b4bac6">' . stlf_e($m['who']) . ' We serve shoppers from Sunset Hills, Mehlville, Oakville, Arnold, Fenton and the rest of the St. Louis area.</p>'

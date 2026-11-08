@@ -2,7 +2,7 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.3
+ * Version: 0.5.4
  */
 if (!defined('ABSPATH')) exit;
 
@@ -127,7 +127,7 @@ function stlf_hdr() {
     return '<div class="hd"><a class="logo" href="/"><img src="' . esc_url(plugins_url('logo.png', __FILE__)) . '" alt="St. Louis Ford" width="120" height="57" style="display:block"></a><a class="btn b" href="' . STLF_TEL . '">Call ' . STLF_PHONE . '</a></div>' . (function_exists('stlf_nav') ? stlf_nav() : '');
 }
 function stlf_ft() {
-    return '<div class="ft">Vehicle listings on St. Louis Ford show inventory from Dave Sinclair Ford, 7466 S. Lindbergh Blvd., St. Louis, MO 63125. Prices exclude tax, title and license. Call ' . STLF_PHONE . '.</div>' . (function_exists('stlf_modal') ? stlf_modal() : '') . '</body></html>';
+    return '<div class="ft">Vehicle listings on St. Louis Ford show inventory at 7466 S. Lindbergh Blvd., St. Louis, MO 63125. Prices exclude tax, title and license. Call ' . STLF_PHONE . '.</div>' . (function_exists('stlf_modal') ? stlf_modal() : '') . '</body></html>';
 }
 function stlf_photo($v, $i, $hero, $w) {
     if (empty($v['ph'])) return '<div class="' . ($hero ? 'hero' : 'cph') . ' phs">Photos coming soon</div>';
