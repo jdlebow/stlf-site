@@ -2,7 +2,7 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.5
+ * Version: 0.5.6
  */
 if (!defined('ABSPATH')) exit;
 
@@ -61,6 +61,8 @@ function stlf_admin() {
     $n = 0; if (file_exists(stlf_file())) { $d = json_decode(file_get_contents(stlf_file()), true); $n = is_array($d) ? count($d) : 0; }
     echo '<div class="wrap"><h1>St. Louis Ford Inventory</h1>';
     if ($msg) echo '<div class="notice notice-info"><p>' . esc_html($msg) . '</p></div>';
+    $ipr = wp_remote_get('https://api.ipify.org', ['timeout' => 10]);
+    echo '<p>Server outbound IP: <b>' . esc_html(is_wp_error($ipr) ? 'unknown' : trim(wp_remote_retrieve_body($ipr))) . '</b></p>';
     echo '<p>Vehicles loaded: <b>' . intval($n) . '</b>. File age: <b>' . round(stlf_age_hours(), 1) . ' hours</b>. ' . (stlf_is_stale() ? '<b style="color:#b00">STALE: prices are hidden on the site.</b>' : '<b style="color:#080">Fresh: prices showing.</b>') . '</p>';
     echo '<form method="post" enctype="multipart/form-data">';
     wp_nonce_field('stlf', 'stlf_nonce');
