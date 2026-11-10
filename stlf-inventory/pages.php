@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 /* Extra pages: finance, trade, contact, about, specials, privacy, plus lead form, robots, llms. */
 
 function stlf_nav() {
-    $l = ['/new-ford-vehicles/' => 'New', '/new-ford-models/' => 'Shop by model', '/specials/' => 'Specials', '/used-vehicles/' => 'Used', '/get-approved/' => 'Get approved', '/value-your-trade/' => 'Value your trade', '/contact-us/' => 'Contact'];
+    $l = ['/new-ford-vehicles/' => 'New', '/new-ford-models/' => 'Shop by model', '/specials/' => 'Specials', '/used-vehicles/' => 'Used', '/get-approved/' => 'Get pre-approved', '/value-your-trade/' => 'Value your trade', '/contact-us/' => 'Contact'];
     $o = ''; foreach ($l as $h => $t) $o .= '<a href="' . $h . '" style="padding:6px 10px;font-weight:700;font-size:15px">' . $t . '</a>';
     return '<div style="background:#0b0c0f;border-bottom:1px solid #2a2e37;display:flex;flex-wrap:wrap;gap:4px;padding:6px 12px">' . $o . '</div>';
 }
@@ -26,8 +26,8 @@ function stlf_extra_page($path) {
     switch ($path) {
         case 'get-approved':
             $body = '<p class="mut" style="max-width:760px;font-size:18px">Start your credit application online. It takes a few minutes, and a finance manager follows up with you. Prefer to talk it through? Call ' . $ph . '.</p>'
-                . stlf_embed_or('stlf_credit_embed', '<div class="box" style="max-width:640px"><h2 style="margin:0">Tell us how to reach you</h2><p class="mut">The secure credit application is being connected. Leave your details and a finance manager will send you the application link.</p></div>' . '<div style="max-width:640px;margin-top:16px">' . stlf_lead_form('Get Approved', '', 'Request my application') . '</div>');
-            return stlf_page('Get Approved for Auto Financing in St. Louis, MO | St. Louis Ford', 'Start a credit application for a new or used Ford in St. Louis, MO. A finance manager follows up with you. Call ' . $ph . '.', $path, 'Get approved', $body);
+                . stlf_embed_or('stlf_credit_embed', '<div class="box" style="max-width:640px"><h2 style="margin:0">Tell us how to reach you</h2><p class="mut">The secure credit application is being connected. Leave your details and a finance manager will send you the application link.</p></div>' . '<div style="max-width:640px;margin-top:16px">' . stlf_lead_form('Get Pre-Approved', '', 'Request my application') . '</div>');
+            return stlf_page('Get Pre-Approved for Auto Financing in St. Louis, MO | St. Louis Ford', 'Start a credit application for a new or used Ford in St. Louis, MO. A finance manager follows up with you. Call ' . $ph . '.', $path, 'Get pre-approved', $body);
         case 'value-your-trade':
             $body = '<p class="mut" style="max-width:760px;font-size:18px">Find out what your car is worth before you visit. Tell us about your vehicle and we will follow up with a real offer to apply toward your next one.</p>'
                 . stlf_embed_or('stlf_trade_embed', '<div style="max-width:640px">' . stlf_lead_form('Value Your Trade', '<label>Year, make and model of your trade<input name="trade"></label><label>Approximate mileage<input name="miles" inputmode="numeric"></label>', 'Get my trade offer') . '</div>');
