@@ -126,7 +126,10 @@ def main():
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         rows = list(ex.map(vehicle, mine))
-    rows = [r for r in rows if r['ph'] and r['pr']]
+    def has_price(r):
+        return any(l in ('Sale Price', 'Price') and (v or 0) > 0 for l, v in r['p'])
+    # skip cars with no photos or no real price (in transit, call for price)
+    rows = [r for r in rows if r['ph'] and has_price(r)]
 
     prev = 0
     try:
