@@ -2,7 +2,7 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.8
+ * Version: 0.5.9
  */
 if (!defined('ABSPATH')) exit;
 
@@ -122,8 +122,33 @@ table{width:100%;border-collapse:collapse}td{padding:12px 14px;border-bottom:1px
 .ft{background:#07080a;color:#b4bac6;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));font-size:13px;line-height:1.5}
 CSS;
 }
+const STLF_GTM = 'GTM-PWFDHPJ';
+// Tracking and share tags load only on the real domain, never on the Flywheel staging address.
+function stlf_live_host() { $h = strtolower($_SERVER['HTTP_HOST'] ?? ''); return (bool)preg_match('/(^|\.)stlouisford\.com$/', $h); }
+function stlf_gtm_head() {
+    if (!stlf_live_host()) return '';
+    return "<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','" . STLF_GTM . "');</script>";
+}
+function stlf_gtm_body() {
+    if (!stlf_live_host()) return '';
+    return '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=' . STLF_GTM . '" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>';
+}
+function stlf_share_tags($title, $desc, $extra) {
+    $o = '';
+    $path = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+    $url = home_url($path ?: '/');
+    if (stripos($extra, 'rel="canonical"') === false && stripos($extra, 'noindex') === false && http_response_code() !== 404) $o .= '<link rel="canonical" href="' . esc_url($url) . '">';
+    if (stripos($extra, 'noindex') !== false) return $o;
+    $o .= '<meta property="og:type" content="website"><meta property="og:site_name" content="St. Louis Ford"><meta property="og:title" content="' . esc_attr($title) . '"><meta property="og:description" content="' . esc_attr($desc) . '"><meta property="og:url" content="' . esc_url($url) . '">';
+    $hasImg = stripos($extra, 'og:image') !== false;
+    $img = plugins_url('og-hero.jpg', STLF_MAIN_FILE);
+    if (!$hasImg) $o .= '<meta property="og:image" content="' . esc_url($img) . '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="New Ford trucks and SUVs in the St. Louis Ford showroom">';
+    $o .= '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' . esc_attr($title) . '"><meta name="twitter:description" content="' . esc_attr($desc) . '">';
+    if (!$hasImg) $o .= '<meta name="twitter:image" content="' . esc_url($img) . '">';
+    return $o;
+}
 function stlf_head($title, $desc, $extra = '') {
-    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . stlf_e($title) . '</title><meta name="description" content="' . esc_attr($desc) . '">' . $extra . '<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"><style>' . stlf_css() . '</style></head><body>';
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">' . stlf_gtm_head() . '<meta name="viewport" content="width=device-width,initial-scale=1"><title>' . stlf_e($title) . '</title><meta name="description" content="' . esc_attr($desc) . '">' . $extra . stlf_share_tags($title, $desc, $extra) . '<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"><style>' . stlf_css() . '</style></head><body>' . stlf_gtm_body();
 }
 function stlf_hdr() {
     return '<div class="hd"><a class="logo" href="/"><img src="' . esc_url(plugins_url('logo.png', __FILE__)) . '" alt="St. Louis Ford" width="120" height="57" style="display:block"></a><a class="btn b" href="' . STLF_TEL . '">Call ' . STLF_PHONE . '</a></div>' . (function_exists('stlf_nav') ? stlf_nav() : '');
@@ -169,7 +194,7 @@ function stlf_vdp($v) {
     $title = $v['name'] . ' for Sale in St. Louis, MO | St. Louis Ford';
     $desc = $v['name'] . ', ' . $v['ext'] . ($stale ? '' : ', ' . stlf_m($v['price'])) . '. ' . $cond . ' Ford dealer inventory in St. Louis, MO. Call ' . STLF_PHONE . ' or check availability online.';
     $schema = ['@context' => 'https://schema.org', '@type' => 'Vehicle', 'name' => $v['name'], 'vehicleIdentificationNumber' => $v['vin'], 'sku' => $v['stock'], 'brand' => ['@type' => 'Brand', 'name' => $v['make']], 'model' => $v['model'], 'vehicleModelDate' => $v['year'], 'color' => $v['ext'], 'vehicleInteriorColor' => $v['int'], 'vehicleEngine' => ['@type' => 'EngineSpecification', 'name' => $v['en']], 'driveWheelConfiguration' => $v['dt'], 'vehicleTransmission' => $v['tm'], 'fuelType' => $v['fu'], 'itemCondition' => $v['used'] ? 'https://schema.org/UsedCondition' : 'https://schema.org/NewCondition', 'image' => array_map('stlf_img', array_slice($v['ph'], 0, 4))];
-    if (!$stale) $schema['offers'] = ['@type' => 'Offer', 'price' => (string)$v['price'], 'priceCurrency' => 'USD', 'availability' => 'https://schema.org/InStock', 'seller' => ['@type' => 'AutoDealer', 'name' => 'St. Louis Ford', 'telephone' => '+1-314-892-2600', 'address' => ['@type' => 'PostalAddress', 'streetAddress' => '7466 S. Lindbergh Blvd.', 'addressLocality' => 'St. Louis', 'addressRegion' => 'MO', 'postalCode' => '63125']]];
+    if (!$stale) $schema['offers'] = ['@type' => 'Offer', 'price' => (string)$v['price'], 'priceCurrency' => 'USD', 'availability' => 'https://schema.org/InStock', 'seller' => ['@type' => 'AutoDealer', 'name' => 'St. Louis Ford', 'telephone' => '+1-314-248-0949', 'address' => ['@type' => 'PostalAddress', 'streetAddress' => '7466 S. Lindbergh Blvd.', 'addressLocality' => 'St. Louis', 'addressRegion' => 'MO', 'postalCode' => '63125']]];
     if ($v['used']) $schema['mileageFromOdometer'] = ['@type' => 'QuantitativeValue', 'value' => $v['mi'], 'unitCode' => 'SMI'];
     $rows = [['Engine', $v['en']], ['Drivetrain', $v['dt']], ['Transmission', $v['tm']], ['Fuel', $v['fu']], ['Exterior', $v['ext']], ['Interior', $v['int']], ['Stock', $v['stock']], ['VIN', $v['vin']]];
     if ($v['used']) array_unshift($rows, ['Mileage', number_format($v['mi']) . ' miles']);
@@ -180,7 +205,8 @@ function stlf_vdp($v) {
     $faq = '<h3>Is this ' . stlf_e($v['model']) . ' available now?</h3><p>It is listed at the Ford dealer in St. Louis. Call ' . STLF_PHONE . ' or send a message to confirm it is still available.</p><h3>What is the price?</h3><p>' . stlf_e($ans) . '</p><h3>Can I value my trade?</h3><p>Yes. A trade value tool is coming to this page.</p>';
     $deep = 'https://www.davesinclairford.com/vehicle/' . rawurlencode($v['vin']) . '/';
     $body = stlf_hdr() . '<div class="wrap"><div class="mut">Home / ' . $cond . ' Ford Vehicles / ' . stlf_e($v['model']) . '</div><div class="cols" style="margin-top:12px"><div class="main"><h1 style="font-size:38px;line-height:1.05;margin:0 0 14px">' . stlf_e($v['name']) . '</h1>' . stlf_photo($v, 0, true, 1200) . '<div class="th">' . $th . '</div><div class="box">' . $box . '<a class="btn y" href="' . STLF_TEL . '">Call ' . STLF_PHONE . '</a><a class="btn b" href="/get-approved/">Get Pre-Approved</a></div><button type="button" class="btn k" data-lead="' . esc_attr($v['name'] . ' ' . $v['vin']) . '" style="border:0;cursor:pointer;font:inherit;font-weight:700;width:100%">Check availability</button><h2>Key specs</h2><table>' . $tb . '</table><h2>About this ' . stlf_e($v['make'] . ' ' . $v['model']) . '</h2><p style="font-size:17px;line-height:1.6;color:#b4bac6">' . stlf_e($ov) . '</p><p><a href="' . esc_url($deep) . '" rel="noopener" style="color:#c8ff2e;font-weight:700;text-decoration:underline">See full equipment and current offers for this vehicle</a></p><h2>Questions</h2>' . $faq . '</div><div class="side"><div class="box"><div class="d" style="font-weight:700;font-size:22px">Check availability</div><p class="mut">Lead form goes here once the CRM email is set.</p><a class="btn y" href="' . STLF_TEL . '">Call ' . STLF_PHONE . '</a></div></div></div></div>' . stlf_ft();
-    return stlf_head($title, $desc, '<script type="application/ld+json">' . wp_json_encode($schema, JSON_UNESCAPED_SLASHES) . '</script><link rel="canonical" href="' . esc_url(home_url('/' . stlf_slug($v) . '/')) . '">') . $body;
+    $ogi = !empty($v['ph']) ? '<meta property="og:image" content="' . esc_url(stlf_img($v['ph'][0], 1200)) . '"><meta name="twitter:image" content="' . esc_url(stlf_img($v['ph'][0], 1200)) . '">' : '';
+    return stlf_head($title, $desc, '<script type="application/ld+json">' . wp_json_encode($schema, JSON_UNESCAPED_SLASHES) . '</script><link rel="canonical" href="' . esc_url(home_url('/' . stlf_slug($v) . '/')) . '">' . $ogi) . $body;
 }
 function stlf_srp($items, $used, $pg) {
     $pages = max(1, (int)ceil(count($items) / STLF_PER_PAGE));
@@ -198,7 +224,8 @@ function stlf_home($inv) {
     $new = array_values(array_filter($inv, fn($v) => !$v['used'])); $used = count($inv) - count($new);
     usort($new, fn($a, $b) => $a['price'] <=> $b['price']);
     $cards = ''; foreach (array_slice($new, 0, 12) as $v) $cards .= stlf_card($v);
-    return stlf_head('Ford Vehicles for Sale in St. Louis, MO | St. Louis Ford', 'Browse new and used Ford vehicles for sale in St. Louis, MO. Call ' . STLF_PHONE . '.') . stlf_hdr() . stlf_hero($inv) . '<div class="wrap">' . stlf_home_tiles($inv) . '<h2 style="margin:0 0 12px">Lowest priced new Fords</h2><div class="grid">' . $cards . '</div></div>' . stlf_ft();
+    $org = ['@context' => 'https://schema.org', '@type' => 'AutoDealer', 'name' => 'St. Louis Ford', 'url' => home_url('/'), 'telephone' => '+1-314-248-0949', 'image' => plugins_url('og-hero.jpg', STLF_MAIN_FILE), 'logo' => plugins_url('logo.png', STLF_MAIN_FILE), 'address' => ['@type' => 'PostalAddress', 'streetAddress' => '7466 S. Lindbergh Blvd.', 'addressLocality' => 'St. Louis', 'addressRegion' => 'MO', 'postalCode' => '63125', 'addressCountry' => 'US']];
+    return stlf_head('Ford Vehicles for Sale in St. Louis, MO | St. Louis Ford', 'Browse new and used Ford vehicles for sale in St. Louis, MO. Call ' . STLF_PHONE . '.', '<script type="application/ld+json">' . wp_json_encode($org, JSON_UNESCAPED_SLASHES) . '</script>') . stlf_hdr() . stlf_hero($inv) . '<div class="wrap">' . stlf_home_tiles($inv) . '<h2 style="margin:0 0 12px">Lowest priced new Fords</h2><div class="grid">' . $cards . '</div></div>' . stlf_ft();
 }
 
 add_action('template_redirect', function () {
