@@ -66,6 +66,26 @@ add_action('init', function () {
     }
     update_option('stlf_robots_status', implode(' | ', $log) . ' ' . gmdate('c'), false);
 });
+function stlf_legacy_redirect_target($path, $query) {
+    parse_str((string)$query, $q);
+    if ($path === 'credit' || $path === 'credit-application') return '/get-approved/';
+    if ($path === 'tradein-value' || $path === 'trade-in-value' || $path === 'trade') return '/value-your-trade/';
+    if ($path === 'research') return '/new-ford-models/';
+    if ($path === 'research/f-150') return '/new-ford-f-150';
+    if (strpos($path, 'research/') === 0) return '/new-ford-models/';
+    if ($path === 'used-cars-st-louis') return '/used-vehicles/';
+    if ($path === 'new-cars-st-louis') return '/new-ford-vehicles/';
+    if ($path === 'index') return (isset($q['rcond']) && $q['rcond'] === 'used') ? '/used-vehicles/' : '/new-ford-vehicles/';
+    if ($path === 'vehicle') return '/new-ford-vehicles/';
+    if (preg_match('#^vehicle/(new|used)-#', $path, $m)) return $m[1] === 'used' ? '/used-vehicles/' : '/new-ford-vehicles/';
+    return null;
+}
+add_action('template_redirect', function () {
+    if (is_admin() || ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return;
+    $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    $t = stlf_legacy_redirect_target($path, parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY));
+    if ($t) { wp_redirect(home_url($t), 301); exit; }
+}, 1);
 add_action('template_redirect', function () {
     if (is_admin()) return;
     $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
