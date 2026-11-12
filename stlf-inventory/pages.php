@@ -53,8 +53,9 @@ function stlf_robots_body() {
 /* Flywheel serves its own default robots.txt ahead of WordPress. A real robots.txt in the web root overrides it
    (Flywheel support, 11/11/2026), so write one and keep it current. Status is stored in option stlf_robots_status. */
 add_action('init', function () {
-    if (get_transient('stlf_robots_chk')) return;
-    set_transient('stlf_robots_chk', 1, 6 * HOUR_IN_SECONDS);
+    $gate = 'stlf_robots_' . substr(md5(stlf_robots_body() . filemtime(__FILE__)), 0, 10);
+    if (get_transient($gate)) return;
+    set_transient($gate, 1, 6 * HOUR_IN_SECONDS);
     $want = stlf_robots_body();
     $paths = array_unique([dirname(WP_CONTENT_DIR) . '/robots.txt', '/www/robots.txt', ABSPATH . 'robots.txt']);
     $log = [];
