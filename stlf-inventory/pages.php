@@ -55,10 +55,15 @@ function stlf_robots_body() {
 add_action('init', function () {
     if (get_transient('stlf_robots_chk')) return;
     set_transient('stlf_robots_chk', 1, 6 * HOUR_IN_SECONDS);
-    $f = ABSPATH . 'robots.txt'; $want = stlf_robots_body();
-    if (@file_get_contents($f) === $want) { update_option('stlf_robots_status', 'ok ' . gmdate('c'), false); return; }
-    $ok = @file_put_contents($f, $want);
-    update_option('stlf_robots_status', ($ok === false ? 'write failed ' : 'written ') . $f . ' ' . gmdate('c'), false);
+    $want = stlf_robots_body();
+    $paths = array_unique([dirname(WP_CONTENT_DIR) . '/robots.txt', '/www/robots.txt', ABSPATH . 'robots.txt']);
+    $log = [];
+    foreach ($paths as $f) {
+        if (@file_get_contents($f) === $want) { $log[] = 'ok ' . $f; continue; }
+        $ok = @file_put_contents($f, $want);
+        $log[] = ($ok === false ? 'write failed ' : 'written ') . $f;
+    }
+    update_option('stlf_robots_status', implode(' | ', $log) . ' ' . gmdate('c'), false);
 });
 add_action('template_redirect', function () {
     if (is_admin()) return;
