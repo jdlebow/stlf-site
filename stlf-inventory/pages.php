@@ -47,12 +47,25 @@ function stlf_extra_page($path) {
 }
 function stlf_extra_paths() { return ['get-approved', 'value-your-trade', 'contact-us', 'about-us', 'privacy-policy']; }
 
+function stlf_robots_body() {
+    return "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\nDisallow: /stlf-lead/\n\nSitemap: " . home_url('/sitemap-inventory.xml') . "\n";
+}
+/* Flywheel serves its own default robots.txt ahead of WordPress. A real robots.txt in the web root overrides it
+   (Flywheel support, 11/11/2026), so write one and keep it current. Status is stored in option stlf_robots_status. */
+add_action('init', function () {
+    if (get_transient('stlf_robots_chk')) return;
+    set_transient('stlf_robots_chk', 1, 6 * HOUR_IN_SECONDS);
+    $f = ABSPATH . 'robots.txt'; $want = stlf_robots_body();
+    if (@file_get_contents($f) === $want) { update_option('stlf_robots_status', 'ok ' . gmdate('c'), false); return; }
+    $ok = @file_put_contents($f, $want);
+    update_option('stlf_robots_status', ($ok === false ? 'write failed ' : 'written ') . $f . ' ' . gmdate('c'), false);
+});
 add_action('template_redirect', function () {
     if (is_admin()) return;
     $path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     if ($path === 'llms.txt' || $path === 'robots.txt') {
         status_header(200); header('Content-Type: text/plain; charset=utf-8');
-        if ($path === 'robots.txt') { echo "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\nDisallow: /stlf-lead/\n\nSitemap: " . home_url('/sitemap-inventory.xml') . "\n"; exit; }
+        if ($path === 'robots.txt') { echo stlf_robots_body(); exit; }
         $inv = stlf_inv(); $n = count(array_filter($inv, fn($v) => !$v['used']));
         echo "# St. Louis Ford\n\n> Online home for new and used Ford inventory, 7466 S. Lindbergh Blvd., St. Louis, MO 63125. Phone " . STLF_PHONE . ".\n\n## Pages\n- " . home_url('/new-ford-vehicles/') . ": " . $n . " new Ford vehicles\n- " . home_url('/used-vehicles/') . ": used cars, trucks and SUVs\n- " . home_url('/new-ford-models/') . ": new Fords by model\n- " . home_url('/specials/') . ": discounts on new Fords\n- " . home_url('/get-approved/') . ": credit application\n- " . home_url('/value-your-trade/') . ": trade in value\n- " . home_url('/contact-us/') . ": contact\n\nPrices on vehicle pages come from a file refreshed daily. If the file is more than 30 hours old, prices are hidden and the page says to call.\n"; exit;
     }
