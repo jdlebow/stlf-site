@@ -36,7 +36,10 @@ def get(url, tries=4):
     last = None
     for i in range(tries):
         try:
-            r = S.get(url, timeout=40)
+            # the dealer site sits behind a 30 minute Cloudflare cache that has served a broken copy of
+            # a list page; a unique query string makes every request a fresh render with live prices
+            fresh = url + ('&' if '?' in url else '?') + 'cb=%d%d' % (time.time() * 1000, i)
+            r = S.get(fresh, timeout=40)
             if r.status_code == 200:
                 return r.text
             last = 'HTTP %s' % r.status_code
