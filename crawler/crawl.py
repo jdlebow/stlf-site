@@ -46,11 +46,15 @@ def get(url, tries=4):
     raise RuntimeError('%s failed: %s' % (url, last))
 
 
-def list_vins(path):
-    """Return {vin: location} for every card on every list page of one list."""
-    found = {}
+def list_vins_once(path):
+    """One pass over every list page. Returns ({vin: location}, advertised total or None)."""
+    found, total = {}, None
     for n in range(1, MAX_PAGES + 1):
         html = get('%s%ssrp-page-%d/' % (BASE, path, n))
+        if total is None:
+            m = re.search(r'([\d,]+)\s+Vehicles\s+Found', html, re.I)
+            if m:
+                total = int(m.group(1).replace(',', ''))
         page = {}
         for m in re.finditer(r'data-event-details=["\']([A-Za-z0-9+/=]+)["\']', html):
             try:
@@ -63,7 +67,24 @@ def list_vins(path):
             break
         found.update(page)
         time.sleep(0.4)
-    return found
+    return found, total
+
+
+def list_vins(path):
+    """Same as one pass, but retries until the cards seen cover the count the site advertises,
+    so a half loaded list can never be mistaken for the whole list."""
+    best, best_total = {}, None
+    for attempt in range(4):
+        found, total = list_vins_once(path)
+        if len(found) > len(best):
+            best, best_total = found, total
+        if best_total and len(best) >= 0.95 * best_total:
+            return best
+        print('list %s attempt %d: %d cards, site says %s, retrying' % (path, attempt + 1, len(found), total))
+        time.sleep(20)
+    if best_total and len(best) < 0.95 * best_total:
+        raise RuntimeError('list %s incomplete: %d cards, site says %s' % (path, len(best), best_total))
+    return best
 
 
 def brace_json(t):
@@ -131,13 +152,23 @@ def main():
     # skip cars with no photos or no real price (in transit, call for price)
     rows = [r for r in rows if r['ph'] and has_price(r)]
 
-    prev = 0
+    prev, prev_used, prev_new = 0, 0, 0
     try:
-        prev = len(json.load(open(OUT)))
+        old = json.load(open(OUT))
+        prev = len(old)
+        prev_used = sum(1 for r in old if r['u'])
+        prev_new = prev - prev_used
     except Exception:
         pass
+    used_now = sum(1 for r in rows if r['u'])
+    new_now = len(rows) - used_now
     if not rows or (prev and len(rows) < prev * MIN_RATIO):
         sys.exit('Only %d vehicles now versus %d before. Not overwriting.' % (len(rows), prev))
+    # each side is checked on its own so a bad used list can not hide behind a good new list
+    if prev_used and used_now < prev_used * 0.8:
+        sys.exit('Only %d used now versus %d before. Not overwriting.' % (used_now, prev_used))
+    if prev_new and new_now < prev_new * 0.8:
+        sys.exit('Only %d new now versus %d before. Not overwriting.' % (new_now, prev_new))
 
     rows.sort(key=lambda r: (r['u'], r['n'] or '', r['v']))
     with open(OUT, 'w', encoding='utf-8') as f:
