@@ -155,7 +155,26 @@ def vehicle(vin):
     }
 
 
+def probe():
+    """Diagnostics only: show what the runner gets for the first used and new list pages."""
+    for path in LISTS:
+        seen = set()
+        for n in (1, 2, 3, 4, 5, 6, 8):
+            url = '%s%ssrp-page-%d/' % (BASE, path, n)
+            r = S.get(url, timeout=40)
+            cards = parse_cards(r.text)
+            m = re.search(r'([\d,]+)\s+Vehicles\s+Found', r.text, re.I)
+            print('PROBE %s page %d: HTTP %s final %s bytes %d cards %d new %d found-text %s hdr %s' % (
+                path, n, r.status_code, r.url, len(r.text), len(cards), len([v for v in cards if v not in seen]),
+                m.group(0) if m else None,
+                {k: v for k, v in r.headers.items() if k.lower() in ('server', 'x-cache', 'cf-cache-status', 'age', 'x-served-by', 'via', 'cache-control', 'content-encoding')}))
+            seen.update(cards)
+            time.sleep(2)
+
+
 def main():
+    if os.environ.get('PROBE'):
+        return probe()
     vins = {}
     for path in LISTS:
         for _ in range(2):   # two passes: cars shift between pages while the list changes
@@ -191,6 +210,8 @@ def main():
     rows.sort(key=lambda r: (r['u'], r['n'] or '', r['v']))
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(rows, f, ensure_ascii=False, separators=(',', ':'))
+    with open(os.path.join(os.path.dirname(OUT), 'meta.json'), 'w') as f:
+        json.dump({'generated': int(time.time()), 'iso': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'vehicles': len(rows), 'new': new_now, 'used': used_now}, f)
     print('wrote %d vehicles (%d new, %d used), previous %d' % (
         len(rows), sum(1 for r in rows if not r['u']), sum(1 for r in rows if r['u']), prev))
 

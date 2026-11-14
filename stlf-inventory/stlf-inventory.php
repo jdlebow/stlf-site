@@ -2,13 +2,13 @@
 /**
  * Plugin Name: St. Louis Ford Inventory
  * Description: Builds the new and used inventory pages, vehicle pages and schema from a daily inventory file. Hides prices when the file is stale.
- * Version: 0.5.13
+ * Version: 0.5.14
  */
 if (!defined('ABSPATH')) exit;
 
 const STLF_PHONE = '(314) 248-0949';
 const STLF_TEL = 'tel:3142480949';
-const STLF_STALE_HOURS = 30;
+const STLF_STALE_HOURS = 20;   // hours since the crawler read the dealer site, not since this server downloaded the file
 const STLF_PER_PAGE = 24;
 define('STLF_MAIN_FILE', __FILE__);
 require_once __DIR__ . '/updater.php';
@@ -17,7 +17,11 @@ require_once __DIR__ . '/models.php';
 
 function stlf_dir() { $u = wp_upload_dir(); $d = $u['basedir'] . '/stlf'; if (!is_dir($d)) wp_mkdir_p($d); return $d; }
 function stlf_file() { return stlf_dir() . '/inventory.json'; }
-function stlf_age_hours() { $f = stlf_file(); return file_exists($f) ? (time() - filemtime($f)) / 3600 : 9999; }
+function stlf_age_hours() {
+    $c = (int)get_option('stlf_crawled_at', 0);   // set from meta.json, written by the crawler on every good run
+    if ($c > 0) return max(0, time() - $c) / 3600;
+    $f = stlf_file(); return file_exists($f) ? (time() - filemtime($f)) / 3600 : 9999;
+}
 function stlf_is_stale() { return stlf_age_hours() > STLF_STALE_HOURS; }
 
 function stlf_save_json($raw) {
@@ -35,11 +39,22 @@ function stlf_fetch_now() {
     $r = wp_remote_get($url, ['timeout' => 60]);
     if (is_wp_error($r)) return 'Fetch failed: ' . $r->get_error_message();
     if (wp_remote_retrieve_response_code($r) !== 200) return 'Fetch failed: HTTP ' . wp_remote_retrieve_response_code($r);
-    return stlf_save_json(wp_remote_retrieve_body($r));
+    $res = stlf_save_json(wp_remote_retrieve_body($r));
+    // meta.json sits next to inventory.json and says when the crawler last read the dealer site
+    $m = wp_remote_get(preg_replace('#[^/]+(\?.*)?$#', 'meta.json', $url) . '?t=' . time(), ['timeout' => 20]);
+    if (!is_wp_error($m) && wp_remote_retrieve_response_code($m) === 200) {
+        $j = json_decode(wp_remote_retrieve_body($m), true);
+        if (!empty($j['generated']) && (int)$j['generated'] > 1700000000) update_option('stlf_crawled_at', (int)$j['generated'], false);
+    }
+    return $res;
 }
+add_filter('cron_schedules', function ($s) { $s['stlf_hourly'] = ['interval' => 3600, 'display' => 'Every hour']; return $s; });
+add_action('init', function () {
+    if (wp_get_schedule('stlf_daily') !== 'stlf_hourly') { wp_clear_scheduled_hook('stlf_daily'); wp_schedule_event(time() + 120, 'stlf_hourly', 'stlf_daily'); }
+});
 add_action('stlf_daily', 'stlf_fetch_now');
 register_activation_hook(__FILE__, function () {
-    if (!wp_next_scheduled('stlf_daily')) wp_schedule_event(time() + 600, 'twicedaily', 'stlf_daily');
+    if (!wp_next_scheduled('stlf_daily')) wp_schedule_event(time() + 600, 'stlf_hourly', 'stlf_daily');
     flush_rewrite_rules();
 });
 register_deactivation_hook(__FILE__, function () { wp_clear_scheduled_hook('stlf_daily'); });
@@ -63,10 +78,10 @@ function stlf_admin() {
     if ($msg) echo '<div class="notice notice-info"><p>' . esc_html($msg) . '</p></div>';
     $ipr = wp_remote_get('https://api.ipify.org', ['timeout' => 10]);
     echo '<p>Server outbound IP: <b>' . esc_html(is_wp_error($ipr) ? 'unknown' : trim(wp_remote_retrieve_body($ipr))) . '</b></p>';
-    echo '<p>Vehicles loaded: <b>' . intval($n) . '</b>. File age: <b>' . round(stlf_age_hours(), 1) . ' hours</b>. ' . (stlf_is_stale() ? '<b style="color:#b00">STALE: prices are hidden on the site.</b>' : '<b style="color:#080">Fresh: prices showing.</b>') . '</p>';
+    echo '<p>Vehicles loaded: <b>' . intval($n) . '</b>. Data age (time since the dealer site was read): <b>' . round(stlf_age_hours(), 1) . ' hours</b>. ' . (stlf_is_stale() ? '<b style="color:#b00">STALE: prices are hidden on the site.</b>' : '<b style="color:#080">Fresh: prices showing.</b>') . '</p>';
     echo '<form method="post" enctype="multipart/form-data">';
     wp_nonce_field('stlf', 'stlf_nonce');
-    echo '<table class="form-table"><tr><th>Inventory file web address</th><td><input class="regular-text" name="source_url" value="' . esc_attr(get_option('stlf_source_url', '')) . '"><p class="description">Fetched twice a day. A file with under 60 percent of the current vehicle count is rejected and the old one stays.</p></td></tr>';
+    echo '<table class="form-table"><tr><th>Inventory file web address</th><td><input class="regular-text" name="source_url" value="' . esc_attr(get_option('stlf_source_url', '')) . '"><p class="description">Fetched every hour; the crawler refreshes the file twice a day or more. A file with under 60 percent of the current vehicle count is rejected and the old one stays.</p></td></tr>';
     echo '<tr><th>Lead email address</th><td><input class="regular-text" name="lead_email" value="' . esc_attr(get_option('stlf_lead_email', '')) . '"><p class="description">Form leads go here as an ADF message. Blank uses the site admin email.</p></td></tr><tr><th>Credit application embed</th><td><textarea name="credit_embed" rows="4" class="large-text code">' . esc_textarea(get_option('stlf_credit_embed', '')) . '</textarea><p class="description">Paste the script or iframe code. Blank shows a simple request form.</p></td></tr><tr><th>Trade tool embed (ClearCar)</th><td><textarea name="trade_embed" rows="4" class="large-text code">' . esc_textarea(get_option('stlf_trade_embed', '')) . '</textarea></td></tr><tr><th>Update source</th><td><input class="regular-text" name="repo" value="' . esc_attr(get_option('stlf_repo', 'jdlebow/stlf-site')) . '" placeholder="owner/repo"><label style="display:block;margin-top:6px"><input type="checkbox" name="autoupdate" value="1" ' . checked(get_option('stlf_autoupdate', 1), 1, false) . '> Install new versions automatically</label><p class="description">GitHub repo that holds version.json and the release zip.</p></td></tr><tr><th>Upload a file now</th><td><input type="file" name="upload"></td></tr>';
     echo '<tr><th>Use plugin home page</th><td><label><input type="checkbox" name="home" value="1" ' . checked(get_option('stlf_home', 1), 1, false) . '> Show the inventory home page at /</label></td></tr></table>';
     echo '<p><button class="button button-primary">Save</button> <button class="button" name="fetch" value="1">Save and fetch now</button></p></form></div>';
