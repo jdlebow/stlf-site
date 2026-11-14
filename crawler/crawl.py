@@ -46,27 +46,45 @@ def get(url, tries=4):
     raise RuntimeError('%s failed: %s' % (url, last))
 
 
+def parse_cards(html):
+    page = {}
+    for m in re.finditer(r'data-event-details=["\']([A-Za-z0-9+/=]+)["\']', html):
+        try:
+            j = json.loads(base64.b64decode(m.group(1)))
+        except Exception:
+            continue
+        if j.get('vin'):
+            page[j['vin']] = (j.get('location') or {}).get('name', '')
+    return page
+
+
 def list_vins_once(path):
-    """One pass over every list page. Returns ({vin: location}, advertised total or None)."""
+    """One pass over every list page. Returns ({vin: location}, advertised total or None).
+    A page that comes back empty or already seen is fetched again, slowly, until the cards
+    seen cover the count the site advertises, so a throttled page is not read as the end."""
     found, total = {}, None
     for n in range(1, MAX_PAGES + 1):
-        html = get('%s%ssrp-page-%d/' % (BASE, path, n))
-        if total is None:
-            m = re.search(r'([\d,]+)\s+Vehicles\s+Found', html, re.I)
-            if m:
-                total = int(m.group(1).replace(',', ''))
+        url = '%s%ssrp-page-%d/' % (BASE, path, n)
         page = {}
-        for m in re.finditer(r'data-event-details=["\']([A-Za-z0-9+/=]+)["\']', html):
-            try:
-                j = json.loads(base64.b64decode(m.group(1)))
-            except Exception:
-                continue
-            if j.get('vin'):
-                page[j['vin']] = (j.get('location') or {}).get('name', '')
-        if not page or all(v in found for v in page):
+        for tryn in range(5):
+            html = get(url)
+            if total is None:
+                m = re.search(r'([\d,]+)\s+Vehicles\s+Found', html, re.I)
+                if m:
+                    total = int(m.group(1).replace(',', ''))
+            page = parse_cards(html)
+            fresh = [v for v in page if v not in found]
+            if fresh:
+                break
+            if total and len(found) >= 0.95 * total:
+                break
+            print('page %d of %s gave %d cards, %d new, %d bytes (try %d): %s' % (
+                n, path, len(page), len(fresh), len(html), tryn + 1, re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))[:160]))
+            time.sleep(15 * (tryn + 1))
+        if not [v for v in page if v not in found]:
             break
         found.update(page)
-        time.sleep(0.4)
+        time.sleep(1.0)
     return found, total
 
 
